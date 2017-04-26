@@ -106,12 +106,9 @@ def question(bot, update, args):
         update.message.reply_text('\n'.join(reply))
 
 def inline_oracle(bot, update):
-    print("Inline oracle")
     query = update.inline_query.query.casefold()
     if not query:
         return
-
-    print(query)
 
     if len(query) < 3:
         return
@@ -132,7 +129,6 @@ def inline_oracle(bot, update):
                     input_message_content=InputTextMessageContent(format_card(oracleData[uniqueName]))
                 )
             )
-    print(results)
     bot.answerInlineQuery(update.inline_query.id, results)
 
 def dispatcher_setup(dispatcher):
