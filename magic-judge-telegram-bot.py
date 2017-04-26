@@ -1,7 +1,7 @@
 import logging
 import json
-from telegram.ext import Updater, CommandHandler, InlineQueryHandler
-from telegram import InlineQueryResultArticle, InputTextMessageContent
+from telegram.ext import Updater, CommandHandler, InlineQueryHandler, CallbackQueryHandler
+from telegram import InlineQueryResultArticle, InputTextMessageContent, InlineKeyboardButton, InlineKeyboardMarkup
 
 #logging.basicConfig(level=logging.DEBUG,
 #                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -43,9 +43,6 @@ def preview_card(card):
         mana,
         card['type'])
 
-def format_names(names):
-    return '\n'.join(sorted(names))
-
 def start(bot, update):
     commands = [
         '/o <card name or search strings> - oracle text for a card',
@@ -59,11 +56,17 @@ def start(bot, update):
 def search_names(words):
     nameCandidates = [name for name in namesToSearch if all(word in name.casefold() for word in words)]
 
+    term = ' '.join(words)
+
     if len(words) > 1:
-        term = ' '.join(words)
-        goodCandidates = [name for name in nameCandidates if term in name]
+        goodCandidates = [name for name in nameCandidates if term in name.casefold()]
         if goodCandidates:
-            return goodCandidates
+            nameCandidates = goodCandidates
+
+    bestCandidates = [name for name in nameCandidates if term == name.casefold()]
+    if bestCandidates:
+        return bestCandidates
+
     return nameCandidates
 
 
@@ -84,7 +87,8 @@ def oracle(bot, update, args):
         return
 
     if len(nameCandidates) > 1:
-        update.message.reply_text(format_names(nameCandidates))
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(name, callback_data=name)] for name in nameCandidates])
+        update.message.reply_text('Which one?', reply_markup=reply_markup)
         return
 
     reply = []
@@ -131,12 +135,27 @@ def inline_oracle(bot, update):
             )
     bot.answerInlineQuery(update.inline_query.id, results)
 
+def callback_name(bot, update):
+    message_id = update.callback_query.message.message_id
+    chat_id = update.callback_query.message.chat.id
+    name = update.callback_query.data
+    if not name in oracleData:
+        return
+
+    bot.editMessageText(
+        chat_id = chat_id,
+        message_id = message_id,
+        text = '\n'.join([format_card(oracleData[uniqueName]) for uniqueName in names[name]])
+    )
+    bot.answerCallbackQuery(update.callback_query.id)
+
 def dispatcher_setup(dispatcher):
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('help', start))
     dispatcher.add_handler(CommandHandler('o', oracle, pass_args=True))
     dispatcher.add_handler(CommandHandler('q', question, pass_args=True))
     dispatcher.add_handler(InlineQueryHandler(inline_oracle))
+    dispatcher.add_handler(CallbackQueryHandler(callback_name))
 
 with open('token') as file:
     token = file.read().strip()
