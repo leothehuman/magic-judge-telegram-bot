@@ -6,7 +6,7 @@ Quotes cards and rules of the Magic: the Gathering TCG.
 
 /q <question> - oracle text for cards mentioned in the question
 
-/cr <section> (coming soon)
+/cr <section or term> - CR section or glossary term
 
 /ipg <section> (coming soon)
 
