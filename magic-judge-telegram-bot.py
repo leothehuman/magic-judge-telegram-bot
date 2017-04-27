@@ -177,14 +177,21 @@ def comp_rules(bot, update, args):
             lang = 'ru'
 
         results = []
+        other = []
         section = words[0].casefold()
         pos = len(section)
         for name in sorted([name for name in crDataNumbers if name.startswith(section)]):
             diff = name[pos:].strip('.')
             if len(diff) < 2 and (len(diff) == 0 or diff.isalpha()):
-              results.append(name)
+                results.append(name)
+            elif not diff[-1:].isalpha():
+                other.append(name)
 
         text = '\n'.join(['<b>{}</b> {}'.format(name, crData['sections'][name][lang]) for name in results])
+        if other:
+            text += '\n<i>(Subsections: {}-{})</i>'.format(other[0], other[-1])
+        if len(text) > 4000:
+            text = '<b>{}</b> {}\n<i>(See also: {}-{})</i>'.format(results[0], crData['sections'][results[0]][lang], results[1], results[-1])
         update.message.reply_text(text, parse_mode='HTML', quote = False)
         return
 
