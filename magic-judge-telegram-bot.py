@@ -1,6 +1,6 @@
 import logging
 import json
-from telegram.ext import Updater, CommandHandler, InlineQueryHandler, CallbackQueryHandler
+from telegram.ext import Updater, CommandHandler, InlineQueryHandler, CallbackQueryHandler, MessageHandler, Filters
 from telegram import InlineQueryResultArticle, InputTextMessageContent, InlineKeyboardButton, InlineKeyboardMarkup
 
 #logging.basicConfig(level=logging.DEBUG,
@@ -27,7 +27,7 @@ def format_card(card):
         footer = '\n{}/{}'.format(card['power'], card['toughness'])
     if "Planeswalker" in card['type'] and 'loyalty' in card:
         footer = '\n{}'.format(card['loyalty'])
-    return '{}{}\n{}{}{}'.format(
+    return '<b>{}</b>{}\n<i>{}</i>{}{}'.format(
         card['name'],
         mana,
         card['type'],
@@ -51,7 +51,7 @@ def start(bot, update):
         '/ipg <section> (coming soon)',
         '/mtr <section> (coming soon)',
     ]
-    update.message.reply_text('How can I help?\n{}'.format('\n'.join(commands)))
+    update.message.reply_text('How can I help?\n{}'.format('\n'.join(commands)), quote = False)
 
 def search_names(words):
     nameCandidates = [name for name in namesToSearch if all(word in name.casefold() for word in words)]
@@ -72,30 +72,30 @@ def search_names(words):
 
 def oracle(bot, update, args):
     if not args:
-        update.message.reply_text('I need some clues to search for, my master!')
+        update.message.reply_text('I need some clues to search for, my master!', quote=False)
         return
     words = [word.casefold() for word in args]
 
     nameCandidates = search_names(words)
 
     if not nameCandidates:
-        update.message.reply_text('I searched very thoroughly, but returned empty-handed, my master!')
+        update.message.reply_text('I searched very thoroughly, but returned empty-handed, my master!', quote=False)
         return
 
     if len(nameCandidates) > 20:
-        update.message.reply_text('I need more specific clues, my master! This would return {} names'.format(len(nameCandidates)))
+        update.message.reply_text('I need more specific clues, my master! This would return {} names'.format(len(nameCandidates)), quote=False)
         return
 
     if len(nameCandidates) > 1:
         reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(name, callback_data=name)] for name in nameCandidates])
-        update.message.reply_text('Which one?', reply_markup=reply_markup)
+        update.message.reply_text('Which one?', reply_markup=reply_markup, quote=False)
         return
 
     reply = []
     for name in nameCandidates:
         for uniqueName in names[name]:
             reply.append(format_card(oracleData[uniqueName]))
-    update.message.reply_text('\n'.join(reply))
+    update.message.reply_text('\n'.join(reply), parse_mode='HTML', quote = False)
 
 def question(bot, update, args):
     words = args
@@ -103,11 +103,9 @@ def question(bot, update, args):
     reply = []
     for name in namesToSearch:
         if name.casefold() in text:
-            reply.append('"' + name + '":')
-            for uniqueName in names[name]:
-                reply.append(format_card(oracleData[uniqueName]))
+            reply.append('"' + name + '":\n' + '\n'.join([format_card(oracleData[uniqueName]) for uniqueName in names[name]]))
     if reply:
-        update.message.reply_text('\n'.join(reply))
+        update.message.reply_text('\n\n'.join(reply), parse_mode='HTML', quote = False)
 
 def inline_oracle(bot, update):
     query = update.inline_query.query.casefold()
@@ -130,7 +128,7 @@ def inline_oracle(bot, update):
                     id=oracleData[uniqueName]['name'],
                     title=word,
                     description=preview_card(oracleData[uniqueName]),
-                    input_message_content=InputTextMessageContent(format_card(oracleData[uniqueName]))
+                    input_message_content=InputTextMessageContent(format_card(oracleData[uniqueName]), parse_mode='HTML')
                 )
             )
     bot.answerInlineQuery(update.inline_query.id, results)
@@ -145,9 +143,19 @@ def callback_name(bot, update):
     bot.editMessageText(
         chat_id = chat_id,
         message_id = message_id,
+        parse_mode = 'HTML',
         text = '\n'.join([format_card(oracleData[uniqueName]) for uniqueName in names[name]])
     )
     bot.answerCallbackQuery(update.callback_query.id)
+
+def text(bot, update):
+    if update.message.chat.type != 'private':
+        return
+    text = update.message.text
+    if len(text) < 30:
+        oracle(bot, update, text.split())
+    else:
+        question(bot, update, text)
 
 def dispatcher_setup(dispatcher):
     dispatcher.add_handler(CommandHandler('start', start))
@@ -156,6 +164,7 @@ def dispatcher_setup(dispatcher):
     dispatcher.add_handler(CommandHandler('q', question, pass_args=True))
     dispatcher.add_handler(InlineQueryHandler(inline_oracle))
     dispatcher.add_handler(CallbackQueryHandler(callback_name))
+    dispatcher.add_handler(MessageHandler(Filters.text, text))
 
 with open('token') as file:
     token = file.read().strip()
