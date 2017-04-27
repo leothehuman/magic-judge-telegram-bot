@@ -187,6 +187,10 @@ def comp_rules(bot, update, args):
             elif not diff[-1:].isalpha():
                 other.append(name)
 
+        if not results:
+            update.message.reply_text('This section doesn\'t exist, my master!', quote=False)
+            return
+
         text = '\n'.join(['<b>{}</b> {}'.format(name, crData['sections'][name][lang]) for name in results])
         if other:
             text += '\n<i>(Subsections: {}-{})</i>'.format(other[0], other[-1])
