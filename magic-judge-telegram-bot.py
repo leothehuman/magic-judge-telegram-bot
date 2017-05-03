@@ -144,7 +144,9 @@ def callback_name(bot, update):
     message_id = update.callback_query.message.message_id
     chat_id = update.callback_query.message.chat.id
     name = update.callback_query.data
-    if not name in oracleData:
+
+    if not name in names:
+        bot.answerCallbackQuery(update.callback_query.id)
         return
 
     bot.editMessageText(
