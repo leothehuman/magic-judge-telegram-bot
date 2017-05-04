@@ -241,9 +241,10 @@ def dispatcher_setup(dispatcher):
     dispatcher.add_handler(CallbackQueryHandler(callback_name))
     dispatcher.add_handler(MessageHandler(Filters.text, text))
 
-with open('token') as file:
-    token = file.read().strip()
-updater = Updater(token)
+with open('config.json') as file:
+    config = json.load(file)
+
+updater = Updater(config['token'])
 dispatcher_setup(updater.dispatcher)
 updater.start_polling()
 updater.idle()
