@@ -1,5 +1,6 @@
 import logging
 import json
+import re
 from telegram.ext import Updater, CommandHandler, InlineQueryHandler, CallbackQueryHandler, MessageHandler, Filters
 from telegram import InlineQueryResultArticle, InputTextMessageContent, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -10,6 +11,8 @@ names = {}
 with open('data/names.json') as file:
     names = json.load(file)
 namesToSearch = names.keys()
+casefoldNames = {n[0].casefold(): n[1] for n in names.iteritems()}
+namesToSearchRegex = re.compile('(?<!\w)({})(?!\w)'.format('|'.join([n for n in casefoldNames.iterkeys()])))
 oracleData = {}
 with open('data/oracle.json') as file:
     oracleData = json.load(file)
@@ -108,9 +111,9 @@ def oracle(bot, update, args):
 def question(bot, update, args):
     text = ' '.join(args).casefold()
     reply = []
-    for name in namesToSearch:
-        if name.casefold() in text:
-            reply.append('"' + name + '":\n' + '\n'.join([format_card(oracleData[uniqueName]) for uniqueName in names[name]]))
+    namesInText = set(namesToSearchRegex.findall(text))
+    for name in namesInText:
+        reply.append('"' + name.title() + '":\n' + '\n'.join([format_card(oracleData[uniqueName]) for uniqueName in casefoldNames[name]]))
     if reply:
         update.message.reply_text('\n\n'.join(reply), parse_mode='HTML', quote = False)
 
