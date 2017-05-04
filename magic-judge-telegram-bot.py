@@ -1,19 +1,12 @@
 import logging
 import json
 import oracle
+import documents
 from telegram.ext import Updater, CommandHandler, InlineQueryHandler, CallbackQueryHandler, MessageHandler, Filters
 from telegram import InlineQueryResultArticle, InputTextMessageContent, InlineKeyboardButton, InlineKeyboardMarkup
 
 #logging.basicConfig(level=logging.DEBUG,
 #                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-crData = {}
-with open('data/cr.json') as file:
-    crData = json.load(file)
-crDataNames = crData['glossary'].keys()
-crDataNumbers = crData['sections'].keys()
-
-print('Registered {} CR glossary terms and {} CR sections'.format(len(crDataNames), len(crDataNumbers)))
 
 def format_card(card):
     mana = ''
@@ -146,65 +139,7 @@ def text(bot, update):
         question(bot, update, text)
 
 def comp_rules_command(bot, update, args):
-    if not args:
-        update.message.reply_text('I need some clues to search for, my master!', quote=False)
-        return
-
-    words = [word.casefold() for word in args]
-
-    if words[0][0].isdigit():
-        lang = 'en'
-        if len(words) > 1 and words[1] == 'ru':
-            lang = 'ru'
-
-        results = []
-        other = []
-        section = words[0].casefold()
-        pos = len(section)
-        for name in sorted([name for name in crDataNumbers if name.startswith(section)]):
-            diff = name[pos:].strip('.')
-            if len(diff) < 2 and (len(diff) == 0 or diff.isalpha()):
-                results.append(name)
-            elif not diff[-1:].isalpha():
-                other.append(name)
-
-        if not results:
-            update.message.reply_text('This section doesn\'t exist, my master!', quote=False)
-            return
-
-        text = '\n'.join(['<b>{}</b> {}'.format(name, crData['sections'][name][lang]) for name in results])
-        if other:
-            text += '\n<i>(Subsections: {}-{})</i>'.format(other[0], other[-1])
-        if len(text) > 4000:
-            text = '<b>{}</b> {}\n<i>(See also: {}-{})</i>'.format(results[0], crData['sections'][results[0]][lang], results[1], results[-1])
-        update.message.reply_text(text, parse_mode='HTML', quote = False)
-        return
-
-    nameCandidates = [name for name in crDataNames if all(word in name.casefold() for word in words)]
-
-    term = ' '.join(words)
-    if len(words) > 1:
-        goodCandidates = [name for name in nameCandidates if term in name.casefold()]
-        if goodCandidates:
-            nameCandidates = goodCandidates
-
-    bestCandidates = [name for name in nameCandidates if name.casefold().startswith(term)]
-    if bestCandidates:
-        nameCandidates = bestCandidates
-        excellentCandidate = [name for name in nameCandidates if name.casefold() == term]
-        if excellentCandidate:
-            nameCandidates = excellentCandidate
-
-    if not nameCandidates:
-        update.message.reply_text('I searched very thoroughly, but returned empty-handed, my master!', quote=False)
-        return
-
-    if len(nameCandidates) > 20:
-        update.message.reply_text('I need more specific clues, my master! This would return {} names'.format(len(nameCandidates)), quote=False)
-        return
-
-    text = '\n'.join(['<b>{}</b> {}'.format(name, crData['glossary'][name]) for name in sorted(nameCandidates)])
-    update.message.reply_text(text, parse_mode='HTML', quote = False)
+    update.message.reply_text(documents.cr_search(args), parse_mode='HTML', quote = False)
 
 def ask_command(bot, update, args):
     pass
