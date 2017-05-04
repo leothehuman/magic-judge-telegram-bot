@@ -227,7 +227,7 @@ def comp_rules(bot, update, args):
     text = '\n'.join(['<b>{}</b> {}'.format(name, crData['glossary'][name]) for name in sorted(nameCandidates)])
     update.message.reply_text(text, parse_mode='HTML', quote = False)
 
-def ask(bot, update):
+def ask(bot, update, args):
     pass
 
 def dispatcher_setup(dispatcher):
