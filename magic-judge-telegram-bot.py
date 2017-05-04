@@ -227,12 +227,16 @@ def comp_rules(bot, update, args):
     text = '\n'.join(['<b>{}</b> {}'.format(name, crData['glossary'][name]) for name in sorted(nameCandidates)])
     update.message.reply_text(text, parse_mode='HTML', quote = False)
 
+def ask(bot, update, args):
+    pass
+
 def dispatcher_setup(dispatcher):
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('help', start))
     dispatcher.add_handler(CommandHandler('o', oracle, pass_args=True))
     dispatcher.add_handler(CommandHandler('q', question, pass_args=True))
     dispatcher.add_handler(CommandHandler('cr', comp_rules, pass_args=True))
+    dispatcher.add_handler(CommandHandler('cr', ask, pass_args=True))
     dispatcher.add_handler(InlineQueryHandler(inline_oracle))
     dispatcher.add_handler(CallbackQueryHandler(callback_name))
     dispatcher.add_handler(MessageHandler(Filters.text, text))
