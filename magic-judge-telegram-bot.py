@@ -1,19 +1,11 @@
 import logging
 import json
+import oracle
 from telegram.ext import Updater, CommandHandler, InlineQueryHandler, CallbackQueryHandler, MessageHandler, Filters
 from telegram import InlineQueryResultArticle, InputTextMessageContent, InlineKeyboardButton, InlineKeyboardMarkup
 
 #logging.basicConfig(level=logging.DEBUG,
 #                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-names = {}
-with open('data/names.json') as file:
-    names = json.load(file)
-namesToSearch = names.keys()
-oracleData = {}
-with open('data/oracle.json') as file:
-    oracleData = json.load(file)
-print('Registered {} card names and {} oracle entries'.format(len(namesToSearch), len(oracleData)))
 
 crData = {}
 with open('data/cr.json') as file:
@@ -51,7 +43,7 @@ def preview_card(card):
         mana,
         card['type'])
 
-def start(bot, update):
+def start_command(bot, update):
     commands = [
         '/o <card name or search strings> - oracle text for a card',
         '/q <question> - oracle text for cards mentioned in the question',
@@ -61,30 +53,13 @@ def start(bot, update):
     ]
     update.message.reply_text('How can I help?\n{}'.format('\n'.join(commands)), quote = False)
 
-def search_names(words):
-    nameCandidates = [name for name in namesToSearch if all(word in name.casefold() for word in words)]
-
-    term = ' '.join(words)
-
-    if len(words) > 1:
-        goodCandidates = [name for name in nameCandidates if term in name.casefold()]
-        if goodCandidates:
-            nameCandidates = goodCandidates
-
-    bestCandidates = [name for name in nameCandidates if term == name.casefold()]
-    if bestCandidates:
-        return bestCandidates
-
-    return nameCandidates
-
-
-def oracle(bot, update, args):
+def oracle_command(bot, update, args):
     if not args:
         update.message.reply_text('I need some clues to search for, my master!', quote=False)
         return
     words = [word.casefold() for word in args]
 
-    nameCandidates = search_names(words)
+    nameCandidates = oracle.get_matching_names(words)
 
     if not nameCandidates:
         update.message.reply_text('I searched very thoroughly, but returned empty-handed, my master!', quote=False)
@@ -101,16 +76,18 @@ def oracle(bot, update, args):
 
     reply = []
     for name in nameCandidates:
-        for uniqueName in names[name]:
-            reply.append(format_card(oracleData[uniqueName]))
+        for oracleName in oracle.get_oracle_names(name):
+            reply.append(format_card(oracle.get_card(oracleName)))
     update.message.reply_text('\n'.join(reply), parse_mode='HTML', quote = False)
 
-def question(bot, update, args):
+def question_command(bot, update, args):
     text = ' '.join(args).casefold()
+
+    names = oracle.get_names_in_text(text)
+
     reply = []
-    for name in namesToSearch:
-        if name.casefold() in text:
-            reply.append('"' + name + '":\n' + '\n'.join([format_card(oracleData[uniqueName]) for uniqueName in names[name]]))
+    for name in names:
+        reply.append('"' + name + '":\n' + '\n'.join([format_card(oracle.get_card(oracleName)) for oracleName in oracle.get_oracle_names(name)]))
     if reply:
         update.message.reply_text('\n\n'.join(reply), parse_mode='HTML', quote = False)
 
@@ -123,19 +100,20 @@ def inline_oracle(bot, update):
         return
 
     words = query.split()
-    nameCandidates = search_names(words)
+    nameCandidates = oracle.get_matching_names(words)
     if not nameCandidates:
         return
 
     results = list()
     for word in nameCandidates[:3]:
-        for uniqueName in names[word]:
+        for oracleName in oracle.get_oracle_names(word):
+            card = oracle.get_card(oracleName)
             results.append(
                 InlineQueryResultArticle(
-                    id=oracleData[uniqueName]['name'],
+                    id=card['name'],
                     title=word,
-                    description=preview_card(oracleData[uniqueName]),
-                    input_message_content=InputTextMessageContent(format_card(oracleData[uniqueName]), parse_mode='HTML')
+                    description=preview_card(card),
+                    input_message_content=InputTextMessageContent(format_card(card), parse_mode='HTML')
                 )
             )
     bot.answerInlineQuery(update.inline_query.id, results)
@@ -145,7 +123,8 @@ def callback_name(bot, update):
     chat_id = update.callback_query.message.chat.id
     name = update.callback_query.data
 
-    if not name in names:
+    names = oracle.get_oracle_names(name)
+    if not names:
         bot.answerCallbackQuery(update.callback_query.id)
         return
 
@@ -153,7 +132,7 @@ def callback_name(bot, update):
         chat_id = chat_id,
         message_id = message_id,
         parse_mode = 'HTML',
-        text = '\n'.join([format_card(oracleData[uniqueName]) for uniqueName in names[name]])
+        text = '\n'.join([format_card(oracle.get_card(oracleName)) for oracleName in names])
     )
     bot.answerCallbackQuery(update.callback_query.id)
 
@@ -162,11 +141,11 @@ def text(bot, update):
         return
     text = update.message.text
     if len(text) < 30:
-        oracle(bot, update, text.split())
+        oracle_command(bot, update, text.split())
     else:
         question(bot, update, text)
 
-def comp_rules(bot, update, args):
+def comp_rules_command(bot, update, args):
     if not args:
         update.message.reply_text('I need some clues to search for, my master!', quote=False)
         return
@@ -227,16 +206,16 @@ def comp_rules(bot, update, args):
     text = '\n'.join(['<b>{}</b> {}'.format(name, crData['glossary'][name]) for name in sorted(nameCandidates)])
     update.message.reply_text(text, parse_mode='HTML', quote = False)
 
-def ask(bot, update, args):
+def ask_command(bot, update, args):
     pass
 
 def dispatcher_setup(dispatcher):
-    dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CommandHandler('help', start))
-    dispatcher.add_handler(CommandHandler('o', oracle, pass_args=True))
-    dispatcher.add_handler(CommandHandler('q', question, pass_args=True))
-    dispatcher.add_handler(CommandHandler('cr', comp_rules, pass_args=True))
-    dispatcher.add_handler(CommandHandler('ask', ask, pass_args=True))
+    dispatcher.add_handler(CommandHandler('start', start_command))
+    dispatcher.add_handler(CommandHandler('help', start_command))
+    dispatcher.add_handler(CommandHandler('o', oracle_command, pass_args=True))
+    dispatcher.add_handler(CommandHandler('q', question_command, pass_args=True))
+    dispatcher.add_handler(CommandHandler('cr', comp_rules_command, pass_args=True))
+    dispatcher.add_handler(CommandHandler('ask', ask_command, pass_args=True))
     dispatcher.add_handler(InlineQueryHandler(inline_oracle))
     dispatcher.add_handler(CallbackQueryHandler(callback_name))
     dispatcher.add_handler(MessageHandler(Filters.text, text))
