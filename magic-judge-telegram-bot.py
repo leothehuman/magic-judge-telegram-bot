@@ -63,7 +63,8 @@ def oracle_command(bot, update, args):
         return
 
     if len(nameCandidates) > 1:
-        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(name, callback_data=name)] for name in nameCandidates])
+        # TODO: if len(name) < 64 is a quickfix for /o show, which fails to send correct callback data for un... card
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(name, callback_data=name)] for name in nameCandidates if len(name) < 64])
         update.message.reply_text('Which one?', reply_markup=reply_markup, quote=False)
         return
 
