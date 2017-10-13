@@ -5,7 +5,7 @@ WORKDIR /usr/src/app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-ENV NAME magic-judge-candidate-telegram-bot
+ENV NAME magic-judge-telegram-bot
 
 COPY . .
 
