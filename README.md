@@ -5,7 +5,9 @@ Quotes cards and rules of the Magic: the Gathering TCG.
 # Howto:
 
 $ ./make_data.sh
+
 $ docker build -t <container-name> .
+
 $ docker run <container-name>
 
 # Commands
