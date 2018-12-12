@@ -7,6 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 ENV NAME magic-judge-telegram-bot
 
-COPY . .
+COPY src/* ./src/
+COPY data/* ./data/
+COPY config.json ./
 
-CMD ["python", "magic-judge-telegram-bot.py"]
+CMD ["python", "src/magic-judge-telegram-bot.py"]

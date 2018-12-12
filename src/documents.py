@@ -62,6 +62,6 @@ def cr_search(words):
         if len(nameCandidates) > 20:
             return 'I need more specific clues, my master! This would return {} names'.format(len(nameCandidates))
 
-        text = '\n'.join(['<b>{}</b> {}'.format(name, crData['glossary'][name]) for name in sorted(nameCandidates)])
+        text = '\n'.join(['<b>{}</b>\n{}'.format(name, crData['glossary'][name]) for name in sorted(nameCandidates)])
 
     return text
