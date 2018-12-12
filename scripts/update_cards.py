@@ -32,7 +32,7 @@ def download():
 
 # Download and save for the future
 cards = download()
-save('data/cards.json', cards)
+#save('data/cards.json', cards)
 
 languages = ['Russian']
 ignore = [
